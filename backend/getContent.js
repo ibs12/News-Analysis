@@ -1,3 +1,5 @@
+// getContent.js
+
 const fs = require('fs');
 const { Client } = require('pg');
 const axios = require('axios');
@@ -62,59 +64,9 @@ function scrapeWashingtonPost(articleUrl) {
         });
 }
 
-// Connect to the database
-client.connect(err => {
-    if (err) {
-        console.error('Database connection error:', err.stack);
-        process.exit(1);
-    }
+// Export functions if needed for integration
+module.exports = {
+    scrapeArticle
+};
 
-    // Query to fetch all URLs from the top_US_headlines table
-    const query = 'SELECT id, url FROM top_headlines_us';
-
-    client.query(query, (err, res) => {
-        if (err) {
-            console.error('Error executing query:', err.stack);
-            client.end();
-            return;
-        }
-
-        // Array to hold promises for each article processing
-        const promises = [];
-
-        // Process each URL
-        res.rows.forEach(row => {
-            const { id, url } = row;
-
-            // Scrape article content and update database
-            const promise = scrapeArticle(url)
-                .then(articleContent => {
-                    if (articleContent) {
-                        // Update the database with the article content
-                        const updateQuery = 'UPDATE top_headlines_us SET content = $1 WHERE id = $2';
-                        const values = [articleContent, id];
-
-                        return client.query(updateQuery, values);
-                    } else {
-                        console.error('No article content retrieved for URL:', url);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error scraping article for URL', url, ':', error);
-                });
-
-            promises.push(promise);
-        });
-
-        // Wait for all promises to resolve before closing the database connection
-        Promise.all(promises)
-            .then(() => {
-                console.log('All articles processed successfully.');
-                client.end(); // Close the database connection
-            })
-            .catch(err => {
-                console.error('Error processing articles:', err);
-                client.end(); // Close the database connection on error too
-            });
-    });
-});
+// Optionally, include code to connect to the database and process URLs as before

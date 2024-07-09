@@ -45,7 +45,7 @@ function scrapeWashingtonPost(articleUrl) {
 }
 
 // Example usage:
-let articleUrl = 'https://www.sfgate.com/horoscope/article/horoscope-saturday-6-29-24-christopher-renstrom-19521219.php';
+let articleUrl = 'https://fortune.com/2014/10/07/race-gender-sexual-orientation-job-applications/';
 scrapeArticle(articleUrl)
     .then(articleContent => {
         console.log('Article Content:');
