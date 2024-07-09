@@ -1,18 +1,28 @@
-const express = require('express')
-const request = require('request');
+const express = require('express');
+const bodyParser = require('body-parser');
+const { scrapeArticle } = require('./getContent.js');
 
-app = express();
-const PORT = 3000;
+const app = express();
+const PORT = 3001;
 
-app.get('/home', function(req, res) {
-    request('http://127.0.0.1:5000/flask', function (error, response, body) {
-        console.error('error:', error); // Print the error
-        console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
-        console.log('body:', body); // Print the data received
-        res.send(body); //Display the response on the website
-      });      
+// Middleware to parse JSON bodies
+app.use(bodyParser.json());
+
+app.post('/scrape-articles', async (req, res) => {
+    const { url } = req.body;
+    if (!url) {
+        return res.status(400).send('URL parameter is required');
+    }
+
+    try {
+        const content = await scrapeArticle(url);
+        res.json({ content });
+    } catch (error) {
+        console.error('Error scraping article:', error);
+        res.status(500).send('Error scraping article');
+    }
 });
 
-app.listen(PORT, function (){ 
-    console.log('Listening on Port 3000');
-});  
+app.listen(PORT, () => {
+    console.log(`Node.js server running on port ${PORT}`);
+});

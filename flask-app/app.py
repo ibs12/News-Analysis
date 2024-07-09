@@ -1,11 +1,11 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import psycopg2
 from config import load_config
-from flask_cors import CORS
+import requests
 
 app = Flask(__name__)
+from flask_cors import CORS
 CORS(app)
-
 
 # Load config
 config = load_config()
@@ -15,16 +15,19 @@ def get_db_connection():
     conn = psycopg2.connect(**config)
     return conn
 
+@app.route('/scrape', methods=['POST'])
+def scrape_and_update():
+    # Example endpoint to trigger scraping from Node.js server
+    url = 'http://localhost:3000/scrape-articles'  # Adjust URL as per your Node.js server setup
 
-from flask import Flask
-
-app = Flask(__name__)
-
-@app.route('/flask', methods=['GET'])
-def index():
-    return "Flask server"
-
-
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            return "Scraping and updating started successfully."
+        else:
+            return "Failed to start scraping and updating."
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 @app.route('/api/articles', methods=['GET'])
 def get_articles():
