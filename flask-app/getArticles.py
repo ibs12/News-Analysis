@@ -3,6 +3,13 @@ import psycopg2
 import sys
 import requests
 from config import load_config
+import argparse
+
+# Set up argument parser to accept search term
+parser = argparse.ArgumentParser(description='Fetch and store news articles.')
+parser.add_argument('search_term', type=str, help='The search term to fetch articles for')
+args = parser.parse_args()
+search_term = args.search_term
 
 # Load config
 config = load_config()
@@ -16,7 +23,7 @@ try:
     newsapi = NewsApiClient(api_key='fee8e0fcf150466ab960b6b5043be353')
 
     # Get sources
-    allArticles = newsapi.get_everything(language='en', sources='bbc-news,the-verge',)
+    allArticles = newsapi.get_everything(q=search_term, language='en')
     if not allArticles or 'articles' not in allArticles:
         print("No sources found in API response", file=sys.stderr)
         sys.exit(1)
