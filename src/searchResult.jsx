@@ -8,10 +8,14 @@ import "bootstrap/dist/js/bootstrap.bundle.min";
 import { Container, Form, Button, Row, Col, Navbar, Card } from 'react-bootstrap';
 import { ArticleContext } from './ArticlesContext';
 
+
 const SearchResult = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const { article } = useContext(ArticleContext);
+  const { article, setArticle } = useContext(ArticleContext);
+  const [show, setShow] = useState(false);
+  // const target = useRef(null);
+
+
   const navigate = useNavigate();
 
   console.log('articles:', article); // Debugging line
@@ -28,20 +32,24 @@ const SearchResult = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+  
     try {
-      const response = await axios.post('http://127.0.0.1:5000/api/fetch-articles', { searchTerm });
-      
+      const response = await axios.get('http://127.0.0.1:5000/fetch-articles', {
+        params: {
+          search_term: searchTerm, // Assuming searchTerm is a state variable holding the search term
+        },
+      });
+  
       if (response.status === 200) {
         console.log('API response:', response.data);
         console.log('Articles:', response.data.articles);
-        
-        // setArticles(response.data); // This should be an array of articles
+        setArticle(response.data.articles); // This should be an array of articles
         navigate('/searchResult');
       } else {
         console.error('Unexpected response status:', response.status);
       }
     } catch (error) {
-       console.error('Error fetching articles:', error);
+      console.error('Error fetching articles:', error);
     }
   };
 
@@ -49,7 +57,7 @@ const SearchResult = () => {
     <Container fluid>
       <Navbar bg="light">
         <Container fluid>
-          <Navbar.Brand href="#home" className = "title">New Analysis</Navbar.Brand>
+          <Navbar.Brand href="/" className = "title">New Analysis</Navbar.Brand>
           <Form className="d-flex ms-auto" onSubmit={handleSubmit}>
             <Form.Control 
               type="text" 
@@ -64,28 +72,32 @@ const SearchResult = () => {
           </Form>
         </Container>
       </Navbar>
-      <Container fluid className="p-4">
-        <Row className="justify-content-center">
-          <Col xs={12}>
-            <Card>
-              <Card.Body>
-                <Card.Title>Card Title</Card.Title>
-                  <Card.Subtitle className="mb-2 text-muted">Card Subtitle</Card.Subtitle>
-                  <Card.Text>
-                    Some quick example text to build on the card title and make up the
-                    bulk of the card's content.
-
-                    {article.map((article, index) => (
-                    <div key={index}>{article.title}</div>
-                  ))}
-                  </Card.Text>
-                <Card.Link href="#">Card Link</Card.Link>
-                <Card.Link href="#">Another Link</Card.Link>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
+      <header className="searchResult-header">Articles</header>
+      <div className="row">
+      {article.map((article, index) => (
+        <div key={index} className="col-md-3 mb-4"> {/* Adjust col-md-4 for column width */}
+          <Card>
+          <a href={article.url} target="_blank" rel="noopener noreferrer">
+          <Card.Img variant="top" src={article.url_to_image} alt={article.title} />
+          </a>          
+        <Card.Body>
+              <Card.Title>
+                <a href={article.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>
+                  {article.title}
+                </a>
+              </Card.Title>
+              <Card.Subtitle className="mb-2 text-muted">{article.author} | {article.source_name}</Card.Subtitle>
+              <Card.Text>
+                {article.description}
+              </Card.Text>
+              <Button variant="primary" onClick={() => setShow(!show)}>
+                Get Sentiment
+              </Button>
+            </Card.Body>
+          </Card>
+        </div>
+      ))}
+    </div>
     </Container>
 
   );

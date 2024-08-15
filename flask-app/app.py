@@ -4,7 +4,7 @@ from config import load_config
 import requests
 import subprocess
 from newsapi import NewsApiClient
-
+import sys
 
 app = Flask(__name__)
 from flask_cors import CORS
@@ -160,7 +160,7 @@ def fetch_articles():
             print(f"Error closing database connection: {e}", file=sys.stderr)
 
 
-
+@app.route('/article-content', methods=['GET'])
 
 
 # @app.route('/api/articles', methods=['GET'])
