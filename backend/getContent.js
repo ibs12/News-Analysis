@@ -37,8 +37,13 @@ function scrapeStandardArticle(articleUrl) {
             const html = response.data;
             const dom = new JSDOM(html, { url: articleUrl });
             const article = new Readability(dom.window.document).parse();
-
-            return article.textContent.trim();
+            
+            if (article) {
+                return article.textContent.trim();
+            } else {
+                console.error('Readability could not parse the article.');
+                return null;
+            }
         })
         .catch(error => {
             console.error('Error fetching article:', error);
@@ -46,17 +51,19 @@ function scrapeStandardArticle(articleUrl) {
         });
 }
 
-// Function to scrape Washington Post articles using cheerio
 function scrapeWashingtonPost(articleUrl) {
     return axios.get(articleUrl)
         .then(response => {
             const html = response.data;
             const $ = cheerio.load(html);
-
-            // Select the main article content based on the structure of the Washington Post's HTML
-            const articleContent = $('article').text().trim(); // Adjust the selector based on the specific HTML structure
-
-            return articleContent;
+            const articleContent = $('article').text().trim();
+            
+            if (articleContent) {
+                return articleContent;
+            } else {
+                console.error('Cheerio could not find the article content.');
+                return null;
+            }
         })
         .catch(error => {
             console.error('Error fetching Washington Post article:', error);
@@ -64,9 +71,9 @@ function scrapeWashingtonPost(articleUrl) {
         });
 }
 
+
 // Export functions if needed for integration
 module.exports = {
     scrapeArticle
 };
 
-// Optionally, include code to connect to the database and process URLs as before

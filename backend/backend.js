@@ -2,8 +2,15 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { scrapeArticle } = require('./getContent.js');
 
+const cors = require('cors');
 const app = express();
 const PORT = 3001;
+
+
+app.use(cors({
+    origin: 'http://localhost:3000', // Allow your React app
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  }));
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.json());

@@ -29,9 +29,9 @@ def get_sentiment(text):
 
 # Split the text into chunks
 def split_into_chunks(text, chunk_size=512):
-    tokens = tokenizer.tokenize(text)
+    tokens = tokenizer.encode(text)
     chunks = [tokens[i:i + chunk_size] for i in range(0, len(tokens), chunk_size)]
-    return [tokenizer.convert_tokens_to_string(chunk) for chunk in chunks]
+    return [tokenizer.decode(chunk) for chunk in chunks]
 
 # Analyze sentiment for each chunk and aggregate the results
 def analyze_sentiment(text):
