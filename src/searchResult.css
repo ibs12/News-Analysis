@@ -1,0 +1,61 @@
+/* Centering the form and positioning the logo */
+.section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  padding: 0 20px;
+  position: relative;
+  top: -10vh; /* Adjust the form position */
+}
+
+.section .container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.title {
+  color: #08357a;
+  font-family: "Roboto-Bold", Helvetica;
+  font-size: 30px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.Logo {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  color: #08357a;
+  font-family: "Roboto-Bold", Helvetica;
+  font-size: 40px;
+  font-weight: 700;
+}
+
+/* Input and Button Styles */
+.section .form-control {
+  width: 400px; /* Adjust the width of the search bar */
+}
+
+.section .btn {
+  background-color: #08357a;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 12px 24px; /* Adjust the padding of the button */
+  width: auto; /* Let the button width adjust to its content */
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Optional: Additional Utility Classes for Padding and Margins */
+.mt-3 {
+  margin-top: 1rem !important;
+}
+
+.mt-5 {
+  margin-top: 3rem !important;
+}
