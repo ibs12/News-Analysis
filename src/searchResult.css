@@ -59,3 +59,16 @@
 .mt-5 {
   margin-top: 3rem !important;
 }
+
+.card-spacing {
+  margin-bottom: 10px;
+}
+
+.searchResult-header{
+
+  color: #08357a;
+  font-family: "Roboto-Bold", Helvetica;
+  font-size: 40px;
+  font-weight: 700;
+
+}
