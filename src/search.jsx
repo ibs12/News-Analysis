@@ -10,6 +10,8 @@ import { ArticleContext } from './ArticlesContext';
 
 
 
+
+
 const SearchBar = () => {
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -28,12 +30,11 @@ const SearchBar = () => {
           search_term: searchTerm, // Assuming searchTerm is a state variable holding the search term
         },
       });
-      navigate('/searchResult');
-      setArticle(response.data.articles);
       if (response.status === 200) {
         console.log('API response:', response.data);
         console.log('Articles:', response.data.articles);
         setArticle(response.data.articles); // This should be an array of articles
+        navigate('/searchResult');
       } else {
         console.error('Unexpected response status:', response.status);
       }
