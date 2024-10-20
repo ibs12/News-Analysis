@@ -15,50 +15,36 @@ config = load_config()
 conn = psycopg2.connect(**config)
 cursor = conn.cursor()
 
-# Use the multi-class sentiment model
-tokenizer = AutoTokenizer.from_pretrained("nlptown/bert-base-multilingual-uncased-sentiment")
-model = AutoModelForSequenceClassification.from_pretrained("nlptown/bert-base-multilingual-uncased-sentiment")
 
-def get_sentiment(text):
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
-    with torch.no_grad():
-        logits = model(**inputs).logits
-    predicted_class_id = logits.argmax().item()
-    label_map = {0: 'very negative', 1: 'negative', 2: 'neutral', 3: 'positive', 4: 'very positive'}
-    return label_map[predicted_class_id]
 
-# Split the text into chunks
-def split_into_chunks(text, chunk_size=512):
-    tokens = tokenizer.encode(text)
-    chunks = [tokens[i:i + chunk_size] for i in range(0, len(tokens), chunk_size)]
-    return [tokenizer.decode(chunk) for chunk in chunks]
 
-# Analyze sentiment for each chunk and aggregate the results
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoConfig
+import numpy as np
+from scipy.special import softmax
+import warnings
+
 def analyze_sentiment(text):
-    chunks = split_into_chunks(text)
-    sentiments = [get_sentiment(chunk) for chunk in chunks]
-    return sentiments
-
-def aggregate_sentiments(sentiments):
-    sentiment_counts = Counter(sentiments)
-    most_common_sentiment = sentiment_counts.most_common(1)[0][0]
-    return most_common_sentiment
-
-# Fetch articles from the database
-cursor.execute("SELECT id, content FROM articles")
-articles = cursor.fetchall()
-
-for article in articles:
-    article_id, content = article
-    sentiments = analyze_sentiment(content)
-    overall_sentiment = aggregate_sentiments(sentiments)
+    # Load the model, tokenizer, and config
+    MODEL = "cardiffnlp/twitter-roberta-base-sentiment-latest"
+    tokenizer = AutoTokenizer.from_pretrained(MODEL)
+    config = AutoConfig.from_pretrained(MODEL)
     
-    # Update the article with the sentiment
-    cursor.execute("UPDATE articles SET sentiment = %s WHERE id = %s", (overall_sentiment, article_id))
-    conn.commit()
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*weights of the model checkpoint.*")
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL)
 
-print("Sentiment analysis complete and database updated.")
+    # Tokenize the input text with truncation and padding
+    encoded_input = tokenizer(text, return_tensors='pt', truncation=True, padding=True, max_length=512)
+    output = model(**encoded_input)
 
-# Close the database connection
-cursor.close()
-conn.close()
+    # Apply softmax to get probabilities for each class (Negative, Neutral, Positive)
+    scores = output.logits[0].detach().numpy()  # Use logits attribute to access output
+    scores = softmax(scores)
+
+    # Sort by highest probability and return the top sentiment and its score
+    ranking = np.argsort(scores)[::-1]
+    top_label = config.id2label[ranking[0]]
+    top_score = scores[ranking[0]]
+
+    return {"label": top_label, "score": np.round(float(top_score), 4)}
+
