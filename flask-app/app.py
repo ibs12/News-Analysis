@@ -5,69 +5,52 @@ import requests
 import subprocess
 from newsapi import NewsApiClient
 import sys
+from newspaper import Article
+from dotenv import load_dotenv
+import os
+
+
+
 
 app = Flask(__name__)
 from flask_cors import CORS
 CORS(app)
+load_dotenv()
 
 # Load config
 config = load_config()
 
-newsapi = NewsApiClient(api_key='fee8e0fcf150466ab960b6b5043be353')
+newsapi = NewsApiClient(api_key= os.getenv('API_KEY'))
 
 # Define the base URL of your Node.js server
 node_server_url = 'http://localhost:3001'
+
+articles = []
 
 # Establish database connection
 def get_db_connection():
     conn = psycopg2.connect(**config)
     return conn
 
-# @app.route('/scrape', methods=['POST'])
-# def scrape_and_update():
-#     # Example endpoint to trigger scraping from Node.js server
-#     url = 'http://localhost:3001/scrape-articles'  # Adjust URL as per your Node.js server setup
 
-#     try:
-#         response = requests.get(url)
-#         if response.status_code == 200:
-#             return "Scraping and updating started successfully."
-#         else:
-#             return "Failed to start scraping and updating."
-#     except Exception as e:
-#         return f"Error: {str(e)}"
+from flask import Flask, request, jsonify
+from getSentiment import analyze_sentiment 
+
+@app.route('/get-sentiment', methods=['POST'])
+def get_sentiment():
+    data = request.json
+    content = data.get('content')
+
+    # Ensure the content is provided
+    if not content:
+        return jsonify({'error': 'Content is required'}), 400
+
+    # Call the function from getSentiment.py
+    sentiment = analyze_sentiment(content)
     
     
-# @app.route('/api/search', methods=['POST'])
-# def search_articles():
-#     search_term = request.json.get('searchTerm')
-#     conn = get_db_connection()
-#     cursor = conn.cursor()
-#     query = """
-#     SELECT * FROM articles
-#     WHERE title ILIKE %s OR description ILIKE %s OR content ILIKE %s
-#     """
-#     cursor.execute(query, (f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"))
-#     articles = cursor.fetchall()
-#     cursor.close()
-#     conn.close()
 
-#     articles_list = []
-#     for article in articles:
-#         articles_list.append({
-#             'source_id': article[0],
-#             'source_name': article[1],
-#             'author': article[2],
-#             'title': article[3],
-#             'description': article[4],
-#             'url': article[5],
-#             'url_to_image': article[6],
-#             'published_at': article[7],
-#             'content': article[8]
-#         })
-
-#     return jsonify(articles_list)
-
+    return jsonify(sentiment)
 
 @app.route('/fetch-articles', methods=['GET'])
 def fetch_articles():
@@ -82,7 +65,7 @@ def fetch_articles():
         cursor = conn.cursor()
 
         # Fetch articles from the News API
-        all_articles = newsapi.get_everything(q=search_term, language='en')
+        all_articles = newsapi.get_everything(q=search_term, sort_by='relevancy')
         if not all_articles or 'articles' not in all_articles:
             return jsonify({"error": "No articles found"}), 404
 
@@ -97,15 +80,20 @@ def fetch_articles():
                 url = article['url']
                 url_to_image = article['urlToImage']
                 published_at = article['publishedAt']
-
-                # Fetch content from Node.js server
+                
                 response = requests.post(f"{node_server_url}/scrape-articles", json={'url': url})
 
                 if response.status_code == 200:
                     content = response.json().get('content', '')
                 else:
-                    print(f"Error fetching content for article {title}: HTTP {response.status_code}")
+                    print(f"Error fetching content for article {article['title']}: HTTP {response.status_code}")
                     content = ''  # Fallback to empty content
+
+                    
+                if source_id is None or 'null':
+                    source_id = source_name.replace(" ", "-").lower()   
+                    
+
 
                 # Prepare the article data to return to the frontend
                 article_data = {
@@ -118,8 +106,11 @@ def fetch_articles():
                     "url_to_image": url_to_image,
                     "published_at": published_at,
                     "content": content
+
                 }
                 articles.append(article_data)
+                
+
 
                 # Insert the article into the database
                 insert_query = """
@@ -160,33 +151,66 @@ def fetch_articles():
             print(f"Error closing database connection: {e}", file=sys.stderr)
 
 
-@app.route('/article-content', methods=['GET'])
+# from getBias import getBias 
+# @app.route('/scrape-articles', methods=['GET'])
+
+# def scrape_articles():
+#     try:
+#         conn = get_db_connection()
+#         cursor = conn.cursor()
+        
+#         for article in articles:
+#             url = article['url']
+            
+#             response = requests.post(f"{node_server_url}/scrape-articles", json={'url': url})
+
+#             if response.status_code == 200:
+#                 content = response.json().get('content', '')
+#             else:
+#                 print(f"Error fetching content for article {article['title']}: HTTP {response.status_code}")
+#                 content = ''  # Fallback to empty content
+                
+#             article_data = {
+
+#                     "content": content
+#                 }
+#             article.append(article_data)
+            
+#             # Insert the article into the database
+#             update_query = """
+#             UPDATE articles
+#             SET content = %s
+#             WHERE url = %s
+#             """
+#             cursor.execute(update_query, (
+#                 content,  # The new content
+#                 url       # The URL of the article to update
+#             ))
+
+#             # Commit the transaction to save changes
+#             conn.commit()
+
+#             return jsonify({"message": "Article content updated successfully"}), 200
+
+#     except Exception as e:
+#         conn.rollback()  # Rollback the transaction on error
+#         return jsonify({"error": str(e)}), 500
+
+#     finally:
+#         try:
+#             if cursor:
+#                 cursor.close()
+#             if conn:
+#                 conn.close()
+#         except Exception as e:
+#             print(f"Error closing database connection: {e}", file=sys.stderr)   
+        
+        
+        
 
 
-# @app.route('/api/articles', methods=['GET'])
-# def get_articles():
-#     conn = get_db_connection()
-#     cursor = conn.cursor()
-#     cursor.execute('SELECT * FROM articles')
-#     articles = cursor.fetchall()
-#     cursor.close()
-#     conn.close()
 
-#     articles_list = []
-#     for article in articles:
-#         articles_list.append({
-#             'source_id': article[0],
-#             'source_name': article[1],
-#             'author': article[2],
-#             'title': article[3],
-#             'description': article[4],
-#             'url': article[5],
-#             'url_to_image': article[6],
-#             'published_at': article[7],
-#             'content': article[8]
-#         })
-
-#     return jsonify(articles_list)
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
+
