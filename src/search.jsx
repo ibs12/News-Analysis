@@ -10,8 +10,6 @@ import { ArticleContext } from './ArticlesContext';
 
 
 
-
-
 const SearchBar = () => {
   const [searchTerm, setSearchTerm] = useState('');
   

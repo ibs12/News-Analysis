@@ -8,7 +8,6 @@ import sys
 from newspaper import Article
 from dotenv import load_dotenv
 import os
-from newsdataapi import NewsDataApiClient 
 
 
 
@@ -22,7 +21,6 @@ load_dotenv()
 config = load_config()
 
 newsapi = NewsApiClient(api_key= os.getenv('API_KEY'))
-newsDataapi = NewsDataApiClient(apikey= os.getenv('NEWS_DATA_API_KEY'))
 
 # Define the base URL of your Node.js server
 node_server_url = 'http://localhost:3001'
@@ -67,50 +65,29 @@ def fetch_articles():
         cursor = conn.cursor()
 
         # Fetch articles from the News API
-        # all_articles = newsapi.get_everything(q=search_term, sort_by='relevancy')
-        newsDataApiResponse = newsDataapi.latest_api( q= search_term , country = "us")
-
-
-        if not newsDataApiResponse or 'results' not in newsDataApiResponse:
+        all_articles = newsapi.get_everything(q=search_term, sort_by='relevancy')
+        if not all_articles or 'articles' not in all_articles:
             return jsonify({"error": "No articles found"}), 404
 
         articles = []
-        for article in newsDataApiResponse['results']:
+        for article in all_articles['articles']:
             try:
-                article_id = article['article_id']
+                source_id = article['source']['id']
+                source_name = article['source']['name']
+                author = article['author']
                 title = article['title']
-                link = article['link']
-                keywords = article['keywords']
-                creator = article['creator']
-                video_url = article['video_url']
                 description = article['description']
-                content = article['content']
-                pubDate = article['pubDate']
-                pubDateTZ = article['pubDateTZ']
-                image_url = article['image_url']
-                source_id = article['source_id']
-                source_priority = article['source_priority']
-                source_name = article['source_name']
-                source_url = article['source_url']
-                source_icon = article['source_icon']
-                language = article['language']
-                country = article['country']
-                category = article['category']
-                ai_tag = article['ai_tag']
-                ai_region = article['ai_region']
-                ai_org = article['ai_org']
-                sentiment = article['sentiment']
-                sentiment_stats = article['sentiment_stats']
-                duplicate = article['duplicate']
- 
+                url = article['url']
+                url_to_image = article['urlToImage']
+                published_at = article['publishedAt']
                 
-                # response = requests.post(f"{node_server_url}/scrape-articles", json={'url': url})
+                response = requests.post(f"{node_server_url}/scrape-articles", json={'url': url})
 
-                # if response.status_code == 200:
-                #     content = response.json().get('content', '')
-                # else:
-                #     print(f"Error fetching content for article {article['title']}: HTTP {response.status_code}")
-                #     content = ''  # Fallback to empty content
+                if response.status_code == 200:
+                    content = response.json().get('content', '')
+                else:
+                    print(f"Error fetching content for article {article['title']}: HTTP {response.status_code}")
+                    content = ''  # Fallback to empty content
 
                     
                 if source_id is None or 'null':
@@ -120,33 +97,15 @@ def fetch_articles():
 
                 # Prepare the article data to return to the frontend
                 article_data = {
-                    
-                'article_id' : article_id,
-                'title' : title,
-                'link' : link,
-                'keywords' : keywords,
-                'creator' : creator,
-                'video_url' : video_url,
-                'description' : description,
-                'content' : content,
-                'pubDate' : pubDate,
-                'pubDateTZ' :pubDateTZ,
-                'image_url' :image_url,
-                'source_id' :source_id,
-                'source_priority' :source_priority,
-                'source_name' :source_name,
-                'source_url' :source_url,
-                'source_icon' :source_icon,
-                'language' :language,
-                'country' :country,
-                'category' :category,
-                'ai_tag' :ai_tag,
-                'ai_region' :ai_region,
-                'ai_org' :ai_org,
-                'sentiment' :sentiment,
-                'sentiment_stats' :sentiment_stats,
-                'duplicate' :duplicate,
-
+                    "source_id": source_id,
+                    "source_name": source_name,
+                    "author": author,
+                    "title": title,
+                    "description": description,
+                    "url": url,
+                    "url_to_image": url_to_image,
+                    "published_at": published_at,
+                    "content": content
 
                 }
                 articles.append(article_data)
@@ -155,59 +114,19 @@ def fetch_articles():
 
                 # Insert the article into the database
                 insert_query = """
-                INSERT INTO articles (article_id,
-                title,
-                link,
-                keywords,
-                creator,
-                video_url,
-                description,
-                content,
-                pubDate,
-                pubDateTZ,
-                image_url,
-                source_id,
-                source_priority,
-                source_name,
-                source_url,
-                source_icon,
-                language,
-                country,
-                category,
-                ai_tag,
-                ai_region,
-                ai_org,
-                sentiment,
-                sentiment_stats,
-                duplicate)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO articles (source_id, source_name, author, title, description, url, url_to_image, published_at, content)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 cursor.execute(insert_query, (
-                article_id,
-                title,
-                link,
-                keywords,
-                creator,
-                video_url,
-                description,
-                content,
-                pubDate,
-                pubDateTZ,
-                image_url,
-                source_id,
-                source_priority,
-                source_name,
-                source_url,
-                source_icon,
-                language,
-                country,
-                category,
-                ai_tag,
-                ai_region,
-                ai_org,
-                sentiment,
-                sentiment_stats,
-                duplicate
+                    source_id,
+                    source_name,
+                    author,
+                    title,
+                    description,
+                    url,
+                    url_to_image,
+                    published_at,
+                    content
                 ))
 
             except Exception as e:
