@@ -46,9 +46,6 @@ const SearchResult = () => {
         setSentiments((prevSentiments) => {
           const updatedSentiments = [...prevSentiments];
           updatedSentiments[index] = newSentiment;
-
-
-
           return updatedSentiments;
         });
       })
@@ -77,7 +74,7 @@ const SearchResult = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      const response = await axios.get('http://127.0.0.1:5000/fetch-articles', {
+      const response = await axios.get('http://127.0.0.1:5000/search-articles', {
         params: { search_term: searchTerm },
       });
       if (response.status === 200) {
@@ -116,17 +113,17 @@ const SearchResult = () => {
         {article.map((article, index) => (
           <div key={index} className="col-md-3 mb-4">
             <Card>
-              <a href={article.link} target="_blank" rel="noopener noreferrer">
-                <Card.Img variant="top" src={article.image_url} alt={article.title} />
+              <a href={article.url} target="_blank" rel="noopener noreferrer">
+                <Card.Img variant="top" src={article.url_to_image} alt={article.title} />
               </a>
               <Card.Body>
                 <Card.Title>
-                  <a href={article.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <a href={article.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>
                     {article.title}
                   </a>
                 </Card.Title>
                 <Card.Subtitle className="mb-2 text-muted">
-                  {article.creator} | {article.source_name}
+                  {article.author} | {article.source_name}
                 </Card.Subtitle>
                 <Card.Text>
                   {article.description}

@@ -6,6 +6,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min";
 import { Container, Form, Button, Row, Col } from 'react-bootstrap';
 import { ArticleContext } from './ArticlesContext';
+import { cos } from 'three/examples/jsm/nodes/Nodes.js';
 
 
 
@@ -19,27 +20,35 @@ const SearchBar = () => {
     setSearchTerm(event.target.value);
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-  
-    try {
-      const response = await axios.get('http://127.0.0.1:5000/fetch-articles', {
-        params: {
-          search_term: searchTerm, // Assuming searchTerm is a state variable holding the search term
-        },
-      });
-      if (response.status === 200) {
-        console.log('API response:', response.data);
-        console.log('Articles:', response.data.articles);
-        setArticle(response.data.articles); // This should be an array of articles
-        navigate('/searchResult');
-      } else {
-        console.error('Unexpected response status:', response.status);
-      }
-    } catch (error) {
-      console.error('Error fetching articles:', error);
+const handleSubmit = async (event) => {
+  event.preventDefault();
+
+  try {
+    const response = await axios.get('http://127.0.0.1:5000/search-articles', {
+      params: {
+        search_term: searchTerm,
+      },
+    });
+
+    if (response.status === 200) {
+      console.log('API response:', response.data);
+      setArticle(response.data.articles); // This should be an array of articles
+      navigate('/searchResult');
+    } else {
+      console.error('Unexpected response status:', response.status);
     }
-  };
+  } catch (error) {
+    if (error.response) {
+      // The request was made, and the server responded with a status code
+      console.error('Error fetching articles:', error.response.data.error);
+      alert(error.response.data.error); // Alert user with the error message
+    } else {
+      // The request was made, but no response was received
+      console.error('Error fetching articles:', error.message);
+      alert('Error fetching articles. Please try again.');
+    }
+  }
+};
   
 
   return (
