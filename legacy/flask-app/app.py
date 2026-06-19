@@ -11,6 +11,7 @@ from flask_cors import CORS
 from celery_config import make_celery
 import sys
 import json 
+
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
@@ -46,6 +47,12 @@ def test_celery():
     return "Test task initiated!", 200
 
 
+from getTopHeadLinesDataBase import fetch_topheadlines_us_database
+
+@app.route('/get-topheadlines-database', methods=['GET'])
+def get_topheadlines_database():
+    return fetch_topheadlines_us_database()
+
 
 
 from getSentiment import analyze_sentiment 
@@ -80,7 +87,7 @@ def fetch_articles():
 
         # Prepare the search term for full-text search
         search_query = """
-        SELECT source_id, source_name, author, title, description, url, url_to_image, published_at, content,
+        SELECT source_id, source_name, author, title, description, url, url_to_image, published_at, content, bias,
                ts_rank_cd(
                    setweight(to_tsvector(coalesce(title, '')), 'A') || 
                    setweight(to_tsvector(coalesce(description, '')), 'B') || 
@@ -118,7 +125,8 @@ def fetch_articles():
                 "url": row[5],
                 "url_to_image": row[6],
                 "published_at": row[7],
-                "content": row[8]
+                "content": row[8],
+                "bias": row[9]
             }
             articles.append(article_data)
         

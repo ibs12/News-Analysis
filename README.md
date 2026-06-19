@@ -1,70 +1,91 @@
-# Getting Started with Create React App
+# Lumen — News Intelligence
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Ask any question about the news and get a **balanced, sourced briefing** instead of a
+list of headlines. An AI agent (Claude Opus 4.8) searches the live web across the
+political spectrum, then synthesizes what's happening, how each side is framing it,
+what's established vs. contested, and what everyone's missing — with citations and a
+grounded follow-up chat.
 
-## Available Scripts
+This is a ground-up rewrite of the original News-Analysis project (which classified
+articles with a static BERT bias model). The old Flask/Celery/NewsAPI/Postgres stack
+now lives in [`legacy/`](legacy/) for reference.
 
-In the project directory, you can run:
+## How it works
 
-### `npm start`
+```
+Browser (Vite + React)
+   │  POST /api/briefing  (Server-Sent Events)
+   ▼
+FastAPI (server/)
+   │
+   ├─ 1. research()    Opus 4.8 + web_search + web_fetch → cross-spectrum coverage,
+   │                   reading the most important articles in full
+   ├─ 2. synthesize()  Sonnet 4.6 structured-outputs call → validated Briefing JSON
+   └─ 3. chat()        Sonnet 4.6 grounded follow-up Q&A (RAG over the sources)
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Models are tiered for cost (Opus for agentic research, Sonnet for the rest) and
+fully env-overridable — see `server/.env.example`. Research is thorough, so a
+fresh briefing takes a couple of minutes; lower `RESEARCH_EFFORT` (or the web
+search `max_uses` in `agent.py`) to trade some depth for speed.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- **Live web search** replaces the old NewsAPI cron + Node scraper + Postgres.
+- **Structured outputs** guarantee a typed `Briefing` the UI can render, and
+  every cited source is validated against what web search actually returned.
+- **Prompt caching** keeps multi-turn follow-up chat cheap.
+- **SSE streaming** lets you watch the agent research in real time (and the
+  worker is cancelled if you close the tab, so it stops spending tokens).
+- **Persistence & sharing** — every briefing is saved to SQLite, gets a
+  shareable `/b/:id` link, and appears on the trending homepage. Identical
+  queries within 30 min are served from cache (no new API spend) — tune
+  `CACHE_TTL_SECONDS` in `server/store.py`.
 
-### `npm test`
+## Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Python 3.9+
+- Node 18+
+- An Anthropic API key — https://console.anthropic.com/settings/keys
 
-### `npm run build`
+## Run it
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+**1. Backend** (terminal 1):
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+cd server
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env        # then put your key in server/.env
+python app.py               # serves http://127.0.0.1:8000
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+**2. Frontend** (terminal 2):
 
-### `npm run eject`
+```bash
+npm install
+npm run dev                 # serves http://localhost:5173 (proxies /api → :8000)
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Open http://localhost:5173 and ask about a news topic.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Project layout
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+| Path | What |
+|------|------|
+| `server/app.py` | FastAPI app + SSE endpoints (briefing, chat, get-by-id, trending) |
+| `server/agent.py` | The 3-stage research → synthesize → chat pipeline |
+| `server/store.py` | SQLite persistence: save, fetch-by-id, recent, query cache |
+| `server/schemas.py` | Pydantic models (incl. the structured `Briefing`) |
+| `server/prompts.py` | System prompts for each stage |
+| `src/` | Vite + React + Tailwind frontend |
+| `legacy/` | The original Flask/Celery/Node app (archived) |
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## ⚠️ Security note
 
-## Learn More
+The original code committed live API keys (a Google API key and a Twitter bearer
+token). Those values have been removed from the working tree but **still exist in git
+history** — rotate/revoke them:
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- `legacy/flask-app/extractEvents.py` (Google API key)
+- `legacy/flask-app/fetchTweets.py` (Twitter bearer token)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Also note `legacy/flask-app/database.ini` contains DB credentials.

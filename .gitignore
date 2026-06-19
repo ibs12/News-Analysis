@@ -430,3 +430,12 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# --- News Intelligence v2 ---
+server/.venv/
+server/.env
+.env
+dist/
+__pycache__/
+*.pyc
+server/data/

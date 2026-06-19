@@ -1,5 +1,3 @@
-# tasks.py
-from celery_config import make_celery
 from flask import current_app
 from newsapi import NewsApiClient
 import psycopg2
@@ -11,20 +9,18 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import gc
 
-# Initialize the Celery instance
-celery = make_celery(current_app)
-
-# Create a variable to keep track of the current category
-current_source_index = 0
-
+# Load config
 config = load_config()
 newsapi = NewsApiClient(api_key=os.getenv('API_KEY'))
-node_server_url = 'http://localhost:3001'
 
-# Global variables for model and tokenizer
+# Initialize global variables
 _model = None
 _tokenizer = None
 
+# Define the base URL of your Node.js server
+node_server_url = 'http://localhost:3001'
+
+# Function to initialize model
 def initialize_model():
     global _model, _tokenizer
     if _model is None or _tokenizer is None:
@@ -41,17 +37,15 @@ def initialize_model():
             print(f"Error initializing model: {e}")
             raise
 
+# Function to get bias
 def get_bias(text):
     try:
-        # Ensure model is initialized
         if _model is None or _tokenizer is None:
             initialize_model()
 
-        # Process the text
         inputs = _tokenizer(text, return_tensors="pt", padding='max_length', 
                           truncation=True, max_length=512)
 
-        # Run inference with no gradient computation
         with torch.no_grad():
             outputs = _model(**inputs)
 
@@ -59,7 +53,6 @@ def get_bias(text):
         probabilities = torch.softmax(logits, dim=-1)
         predicted_class = torch.argmax(probabilities, dim=-1).item()
 
-        # Map the predicted class to a label
         labels = ["left", "center", "right"]
         return labels[predicted_class]
 
@@ -68,36 +61,40 @@ def get_bias(text):
         return "unknown"
 
     finally:
-        # Clean up
         gc.collect()
         torch.cuda.empty_cache() if torch.cuda.is_available() else None
 
-@celery.task(name='tasks.fetch_data', bind=True)
-def fetch_data(self):
-    global current_source_index
+def fetch_data():
+    cursor = None  # Initialize cursor to None
+    conn = None  # Initialize connection to None
     
     try:
-        # Initialize model at the start of the task
+        # Initialize model
         initialize_model()
-        
+
         # Establish database connection
         conn = psycopg2.connect(**config)
         cursor = conn.cursor()
         
-        cursor.execute("SELECT id FROM publishers")
-        source_rows = cursor.fetchall()
-        
-        sources = [row[0] for row in source_rows]
-        source = sources[current_source_index]
-        
-        response = newsapi.get_top_headlines(sources=source, language='en')
-        
+
+        sources_response = newsapi.get_sources(country='us')
+
+        # Filter sources to get those with the category 'general'
+        general_sources = [source['id'] for source in sources_response['sources'] if source['category'] == 'general']
+
+        # Fetch top headlines from the filtered sources
+        response = newsapi.get_top_headlines(
+            sources=','.join(general_sources),  # Combine the general sources into a single string
+            language='en')
+
+
         if not response or 'articles' not in response:
-            return {"error": "No articles found"}, 404
-        
+            print({"error": "No articles found"}, 404)
+            return
+
         all_articles = response['articles']
         articles = []
-        
+
         for article in all_articles:
             try:
                 source_id = article['source']['id']
@@ -110,7 +107,7 @@ def fetch_data(self):
                 published_at = article['publishedAt']
                 
                 # Check for duplicate
-                check_query = "SELECT 1 FROM articles WHERE url = %s"
+                check_query = "SELECT 1 FROM top_headlines_us WHERE url = %s"
                 cursor.execute(check_query, (url,))
                 exists = cursor.fetchone()
                 
@@ -118,14 +115,17 @@ def fetch_data(self):
                     print(f"Duplicate article found: {title}, skipping insertion.")
                     continue
                 
-                # Fetch article content
-                response = requests.post(f"{node_server_url}/scrape-articles", json={'url': url})
-                
-                if response.status_code == 200:
-                    content = response.json().get('content', '')
-                else:
-                    print(f"Error fetching content for article {title}: HTTP {response.status_code}")
+                try:
+                    response = requests.post(f"{node_server_url}/scrape-articles", json={'url': url}, timeout=5)
+                    if response.status_code == 200:
+                        content = response.json().get('content', '')
+                    else:
+                        print(f"Error fetching content for article {title}: HTTP {response.status_code}")
+                        content = ''
+                except requests.exceptions.RequestException as e:
+                    print(f"Request failed: {e}")
                     content = ''
+
                 
                 # Get bias
                 bias = get_bias(content)
@@ -149,7 +149,7 @@ def fetch_data(self):
                 
                 # Insert into database
                 insert_query = """
-                INSERT INTO articles (source_id, source_name, author, title, description, url, url_to_image, published_at, content, bias)
+                INSERT INTO top_headlines_us (source_id, source_name, author, title, description, url, url_to_image, published_at, content, bias)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 cursor.execute(insert_query, (
@@ -162,21 +162,23 @@ def fetch_data(self):
                 conn.rollback()
         
         conn.commit()
-        current_source_index = (current_source_index + 1) % len(sources)
-        return {"articles": articles}, 200
+        print({"articles": articles}, 200)
         
     except Exception as e:
-        return {"error": str(e)}, 500
+        print({"error": str(e)}, 500)
         
     finally:
         try:
-            if cursor:
+            if cursor is not None:
                 cursor.close()
-            if conn:
+            if conn is not None:
                 conn.close()
         except Exception as e:
             print(f"Error closing database connection: {e}", file=sys.stderr)
             
-        # Clean up after task completion
         gc.collect()
         torch.cuda.empty_cache() if torch.cuda.is_available() else None
+
+# To call the fetch_data function, use:
+if __name__ == '__main__':
+    fetch_data()  # This will run the fetch_data function when the script is executed

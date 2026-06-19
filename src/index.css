@@ -1,13 +1,67 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,wght@0,500;0,600;1,400&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  background-color: #f8f7f4;
+  color: theme("colors.ink");
+  font-family: theme("fontFamily.sans");
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* Thin, unobtrusive scrollbar for the research/console feeds */
+.scroll-slim::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: #d6d3cd;
+  border-radius: 9999px;
+}
+
+/* Markdown rendered inside chat / notes */
+.prose-chat p {
+  margin: 0 0 0.6rem;
+  line-height: 1.6;
+}
+.prose-chat ul {
+  margin: 0 0 0.6rem 1.1rem;
+  list-style: disc;
+}
+.prose-chat ol {
+  margin: 0 0 0.6rem 1.1rem;
+  list-style: decimal;
+}
+.prose-chat a {
+  color: theme("colors.brand");
+  text-decoration: underline;
+}
+.prose-chat strong {
+  font-weight: 600;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.pulse-dot {
+  animation: pulse-dot 1.2s ease-in-out infinite;
 }

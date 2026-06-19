@@ -18,7 +18,7 @@ def fetch_data():
         conn = psycopg2.connect(**config)
         cursor = conn.cursor()
 
-        response = newsapi.get_sources(language='en', country='us')
+        response = newsapi.get_top_headlines(language='en', country='us')
 
         # Check if the response contains sources
         if not response or 'sources' not in response:
