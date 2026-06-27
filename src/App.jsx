@@ -5,6 +5,17 @@ import SearchHero from "./components/SearchHero.jsx";
 import Trending from "./components/Trending.jsx";
 import ResearchConsole from "./components/ResearchConsole.jsx";
 import BriefingView from "./components/BriefingView.jsx";
+import SettingsControls, { DEFAULT_SETTINGS } from "./components/SettingsControls.jsx";
+
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem("lumen.settings"));
+    if (s && s.model && s.effort) return s;
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_SETTINGS;
+}
 
 const EMPTY = {
   statusLabel: "",
@@ -26,7 +37,19 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [state, setState] = useState(EMPTY);
   const [briefingId, setBriefingId] = useState(null);
+  const [settings, setSettings] = useState(loadSettings);
+  const settingsRef = useRef(settings);
   const abortRef = useRef(null);
+
+  const updateSettings = useCallback((s) => {
+    setSettings(s);
+    settingsRef.current = s;
+    try {
+      localStorage.setItem("lumen.settings", JSON.stringify(s));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const resetHome = useCallback(() => {
     abortRef.current?.abort();
@@ -94,6 +117,7 @@ export default function App() {
     try {
       await streamBriefing(
         q,
+        settingsRef.current,
         ({ event, data }) => {
           setState((s) => {
             switch (event) {
@@ -144,7 +168,12 @@ export default function App() {
   if (phase === "idle") {
     return (
       <div className="min-h-full">
-        <SearchHero onSearch={runBriefing} busy={busy} />
+        <SearchHero
+          onSearch={runBriefing}
+          busy={busy}
+          settings={settings}
+          onSettingsChange={updateSettings}
+        />
         <Trending onOpen={openBriefing} />
       </div>
     );
@@ -153,7 +182,14 @@ export default function App() {
   // Briefing screen (researching | loading | ready | error)
   return (
     <div className="min-h-full">
-      <TopBar busy={busy} onSearch={runBriefing} onHome={goHome} briefingId={briefingId} />
+      <TopBar
+        busy={busy}
+        onSearch={runBriefing}
+        onHome={goHome}
+        briefingId={briefingId}
+        settings={settings}
+        onSettingsChange={updateSettings}
+      />
 
       <main className="mx-auto max-w-5xl space-y-6 px-5 pb-24 pt-6">
         {query && (
@@ -205,7 +241,7 @@ export default function App() {
   );
 }
 
-function TopBar({ busy, onSearch, onHome, briefingId }) {
+function TopBar({ busy, onSearch, onHome, briefingId, settings, onSettingsChange }) {
   const [value, setValue] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -245,6 +281,15 @@ function TopBar({ busy, onSearch, onHome, briefingId }) {
             className="w-full bg-transparent py-1 text-sm outline-none placeholder:text-slate-400"
           />
         </form>
+
+        <div className="hidden lg:block">
+          <SettingsControls
+            settings={settings}
+            onChange={onSettingsChange}
+            disabled={busy}
+            compact
+          />
+        </div>
 
         {briefingId && (
           <button

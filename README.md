@@ -25,9 +25,11 @@ FastAPI (server/)
 ```
 
 Models are tiered for cost (Opus for agentic research, Sonnet for the rest) and
-fully env-overridable — see `server/.env.example`. Research is thorough, so a
-fresh briefing takes a couple of minutes; lower `RESEARCH_EFFORT` (or the web
-search `max_uses` in `agent.py`) to trade some depth for speed.
+env-overridable — see `server/.env.example`. The UI also exposes a per-briefing
+**Model** (Opus / Sonnet) and **Thinking** (Deep / Balanced / Quick) control;
+"Thinking" sets the research effort *and* scales the web-search/fetch budget
+(Deep 12/3 · Balanced 8/2 · Quick 5/1), which is the main speed-vs-depth lever.
+Defaults to Opus + Balanced; pick Sonnet + Quick for a fast pass.
 
 - **Live web search** replaces the old NewsAPI cron + Node scraper + Postgres.
 - **Structured outputs** guarantee a typed `Briefing` the UI can render, and
