@@ -81,13 +81,3 @@ Open http://localhost:5173 and ask about a news topic.
 | `src/` | Vite + React + Tailwind frontend |
 | `legacy/` | The original Flask/Celery/Node app (archived) |
 
-## ⚠️ Security note
-
-The original code committed live API keys (a Google API key and a Twitter bearer
-token). Those values have been removed from the working tree but **still exist in git
-history** — rotate/revoke them:
-
-- `legacy/flask-app/extractEvents.py` (Google API key)
-- `legacy/flask-app/fetchTweets.py` (Twitter bearer token)
-
-Also note `legacy/flask-app/database.ini` contains DB credentials.
